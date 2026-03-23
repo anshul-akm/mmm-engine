@@ -67,7 +67,7 @@ def hill_saturation(x, alpha, gamma):
 # INSTRUCTIONS TAB
 # =========================
 with tab2:
-    st.header("📘 📘 How to Use This MMM Tool")
+    st.header("📘 How to Use This MMM Tool")
 
     st.markdown("""
 

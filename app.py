@@ -10,7 +10,11 @@ import time
 # =========================
 # PAGE CONFIG
 # =========================
-st.set_page_config(page_title="Anshul MMM Intelligence", layout="wide")
+st.set_page_config(
+    page_title="Anshul MMM Engine",
+    page_icon="📊",   # or "🚀"
+    layout="wide"
+)
 
 # =========================
 # PASSWORD

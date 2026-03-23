@@ -292,10 +292,7 @@ with tab1:
 
             # 🎬 Animation
             st.markdown("### 🤖 MMM Engine Initializing...")
-            try:
-                st.video(open("robot.mp4", "rb").read())
-            except:
-                st.info("Add robot.mp4 for animation")
+
 
             # ⏳ Cinematic Progress
             status = st.empty()

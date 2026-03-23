@@ -67,30 +67,74 @@ def hill_saturation(x, alpha, gamma):
 # INSTRUCTIONS TAB
 # =========================
 with tab2:
-    st.header("📘 MMM Guide")
+    st.header("📘 How to use?")
 
     st.markdown("""
-### 🔁 Adstock
-Carryover of ads  
-Higher = longer impact  
+## 📘 How to Use This MMM Tool
 
-### 📈 Alpha
-Curve steepness  
+### 🔁 Adstock (Decay Rate)
+Adstock models the **carryover effect of advertising over time**.
 
-### 📉 Gamma
-Diminishing returns  
+- **Low decay (0.0 – 0.3)** → Immediate impact, fades quickly  
+- **Medium decay (0.3 – 0.6)** → Moderate carryover  
+- **High decay (0.6 – 0.9)** → Long-lasting impact  
 
----
-
-### 🎯 Tips
-- TV → high decay  
-- Digital → medium  
-- Performance → low gamma  
+👉 Use higher values for **brand channels (TV, YouTube)**  
+👉 Use lower values for **performance channels (Search, Meta Ads)**  
 
 ---
 
-### ⚠️ Model Health
-Train R² >> Test R² → overfitting  
+### 📈 Alpha (Response Curve Shape)
+Alpha controls the **steepness of the response curve**.
+
+- **Low alpha (~0.5 – 1.0)** → Gradual increase in returns  
+- **Medium alpha (~1.0 – 2.0)** → Balanced response  
+- **High alpha (>2.0)** → Sharp increase after threshold  
+
+👉 Higher alpha means **strong response after a certain spend level**
+
+---
+
+### 📉 Gamma (Saturation Level)
+Gamma determines **when diminishing returns begin**.
+
+- **Low gamma** → Saturation happens early  
+- **High gamma** → Saturation happens later  
+
+👉 Low gamma = good for **performance channels**  
+👉 High gamma = suitable for **brand-building channels**
+
+---
+
+### 🎯 Practical Guidelines
+
+| Channel Type     | Decay | Alpha | Gamma |
+|------------------|------|-------|-------|
+| TV / Branding    | High | Medium | High |
+| Digital Display  | Medium | Medium | Medium |
+| Search / Performance | Low | High | Low |
+
+---
+
+### ⚠️ Model Diagnostics
+
+- If **Train R² is much higher than Test R²** → Model is likely **overfitting**
+- If **ROI values look unrealistic** → Check:
+  - data quality  
+  - extreme parameter values  
+
+---
+
+### 💡 What You Can Do With This Tool
+
+- 📊 Measure channel contribution  
+- 📈 Understand diminishing returns  
+- 💰 Optimize budget allocation  
+- 🎯 Run scenario simulations  
+
+---
+
+Built with ❤️ by Anshul Analytics
 """)
 
 # =========================

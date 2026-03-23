@@ -51,7 +51,8 @@ st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix 
 # =========================
 tab1, tab2, tab3 = st.tabs(["📊 MMM Dashboard", "📊 EDA", "❓ Help"])
 # =========================
-# EDA TAB
+# =========================
+# EDA TAB (FULL VERSION)
 # =========================
 with tab2:
 
@@ -62,6 +63,9 @@ with tab2:
     if file:
         df = pd.read_csv(file)
 
+        st.subheader("📄 Data Preview")
+        st.dataframe(df.head(), use_container_width=True)
+
         numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
         col1, col2 = st.columns(2)
@@ -71,14 +75,34 @@ with tab2:
         if sales_col and spend_cols:
 
             # =========================
+            # TIME SERIES
+            # =========================
+            st.subheader("📈 Sales & Spend Over Time")
+
+            ts_df = df[[sales_col] + spend_cols]
+            st.line_chart(ts_df)
+
+            # =========================
             # CORRELATION
             # =========================
+            st.subheader("🔥 Correlation Heatmap")
+
             corr = df[[sales_col] + spend_cols].corr()
+            st.dataframe(corr.style.background_gradient(cmap="coolwarm"))
+
+            # =========================
+            # SALES CORRELATION
+            # =========================
+            st.subheader("📊 Correlation with Sales")
+
             sales_corr = corr[sales_col].drop(sales_col).sort_values(ascending=False)
+            st.bar_chart(sales_corr)
 
             # =========================
             # VIF
             # =========================
+            st.subheader("⚠️ VIF (Multicollinearity)")
+
             from statsmodels.stats.outliers_influence import variance_inflation_factor
 
             X = df[spend_cols].dropna()
@@ -90,34 +114,38 @@ with tab2:
                 for i in range(len(spend_cols))
             ]
 
+            st.dataframe(vif_data)
+
             # =========================
-            # AUTO INSIGHTS (SAFE)
+            # AUTO INSIGHTS
             # =========================
             st.subheader("🧠 Auto Insights")
 
             insights = []
 
-            # Top correlations
-            top_channels = sales_corr.head(3)
-            for ch, val in top_channels.items():
-                insights.append(f"📈 {ch} has strong positive correlation with sales ({val:.2f})")
+            # Top correlation
+            for ch, val in sales_corr.head(3).items():
+                insights.append(f"📈 {ch} strongly correlates with sales ({val:.2f})")
 
             # Negative correlation
-            neg_channels = sales_corr[sales_corr < 0]
-            for ch, val in neg_channels.items():
-                insights.append(f"🚨 {ch} shows negative correlation with sales ({val:.2f})")
+            for ch, val in sales_corr[sales_corr < 0].items():
+                insights.append(f"🚨 {ch} negatively correlates with sales ({val:.2f})")
 
-            # VIF
-            high_vif = vif_data[vif_data["VIF"] > 10]
-            for _, row in high_vif.iterrows():
-                insights.append(f"⚠️ {row['Channel']} has high multicollinearity (VIF={row['VIF']:.1f})")
+            # VIF warnings
+            for _, row in vif_data.iterrows():
+                if row["VIF"] > 10:
+                    insights.append(f"⚠️ {row['Channel']} has high multicollinearity (VIF={row['VIF']:.1f})")
+                elif row["VIF"] > 5:
+                    insights.append(f"⚠️ {row['Channel']} has moderate multicollinearity (VIF={row['VIF']:.1f})")
 
-            # Display
             if insights:
                 for ins in insights:
                     st.markdown(f"- {ins}")
             else:
                 st.info("No strong insights detected")
+
+    else:
+        st.info("Upload data to begin EDA")
 # =========================
 # FUNCTIONS
 # =========================

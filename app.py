@@ -40,7 +40,7 @@ h1, h2, h3 {text-align:center; color:#00FFAA;}
 # HEADER
 # =========================
 st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-st.image("logo.png", width=600)
+st.image("logo.png", width=1500)
 st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("<h1>Anshul MMM Intelligence 🚀</h1>", unsafe_allow_html=True)

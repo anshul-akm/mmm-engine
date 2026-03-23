@@ -62,14 +62,8 @@ with tab2:
     if file:
         df = pd.read_csv(file)
 
-        st.subheader("📄 Data Preview")
-        st.dataframe(df.head(), use_container_width=True)
-
         numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
-        # =========================
-        # COLUMN SELECTION
-        # =========================
         col1, col2 = st.columns(2)
         sales_col = col1.selectbox("Select Sales Column", numeric_cols, key="eda_sales")
         spend_cols = col2.multiselect("Select Spend Columns", numeric_cols, key="eda_spend")
@@ -77,36 +71,14 @@ with tab2:
         if sales_col and spend_cols:
 
             # =========================
-            # TIME SERIES
+            # CORRELATION
             # =========================
-            st.subheader("📈 Sales & Spend Over Time")
-
-            ts_df = df[[sales_col] + spend_cols].copy()
-            st.line_chart(ts_df)
-
-            # =========================
-            # CORRELATION HEATMAP
-            # =========================
-            st.subheader("🔥 Correlation Heatmap")
-
             corr = df[[sales_col] + spend_cols].corr()
-
-            st.dataframe(corr.style.background_gradient(cmap="coolwarm"))
-
-            # =========================
-            # CORRELATION WITH SALES
-            # =========================
-            st.subheader("📊 Correlation with Sales")
-
             sales_corr = corr[sales_col].drop(sales_col).sort_values(ascending=False)
 
-            st.bar_chart(sales_corr)
-
             # =========================
-            # VIF (MULTICOLLINEARITY)
+            # VIF
             # =========================
-            st.subheader("⚠️ VIF (Multicollinearity Check)")
-
             from statsmodels.stats.outliers_influence import variance_inflation_factor
 
             X = df[spend_cols].dropna()
@@ -118,59 +90,34 @@ with tab2:
                 for i in range(len(spend_cols))
             ]
 
-            st.dataframe(vif_data)
+            # =========================
+            # AUTO INSIGHTS (SAFE)
+            # =========================
+            st.subheader("🧠 Auto Insights")
 
-            st.markdown("""
-            **Interpretation:**
-            - VIF < 5 → Good  
-            - VIF 5–10 → Moderate multicollinearity  
-            - VIF > 10 → High multicollinearity (problematic)
-            """)
+            insights = []
 
-# =========================
-# AUTO INSIGHTS
-# =========================
-st.subheader("🧠 Auto Insights")
+            # Top correlations
+            top_channels = sales_corr.head(3)
+            for ch, val in top_channels.items():
+                insights.append(f"📈 {ch} has strong positive correlation with sales ({val:.2f})")
 
-insights = []
+            # Negative correlation
+            neg_channels = sales_corr[sales_corr < 0]
+            for ch, val in neg_channels.items():
+                insights.append(f"🚨 {ch} shows negative correlation with sales ({val:.2f})")
 
-# 1. Top correlated channels
-top_channels = sales_corr.head(3)
-for ch, val in top_channels.items():
-    insights.append(f"📈 {ch} has strong positive correlation with sales ({val:.2f})")
+            # VIF
+            high_vif = vif_data[vif_data["VIF"] > 10]
+            for _, row in high_vif.iterrows():
+                insights.append(f"⚠️ {row['Channel']} has high multicollinearity (VIF={row['VIF']:.1f})")
 
-# 2. Negative correlation warning
-neg_channels = sales_corr[sales_corr < 0]
-for ch, val in neg_channels.items():
-    insights.append(f"🚨 {ch} shows negative correlation with sales ({val:.2f}) → investigate tracking or lag effects")
-
-# 3. VIF warnings
-high_vif = vif_data[vif_data["VIF"] > 10]
-for _, row in high_vif.iterrows():
-    insights.append(f"⚠️ {row['Channel']} has very high multicollinearity (VIF={row['VIF']:.1f})")
-
-moderate_vif = vif_data[(vif_data["VIF"] > 5) & (vif_data["VIF"] <= 10)]
-for _, row in moderate_vif.iterrows():
-    insights.append(f"⚠️ {row['Channel']} has moderate multicollinearity (VIF={row['VIF']:.1f})")
-
-# 4. Channel behavior hints
-for ch, val in sales_corr.items():
-    if val > 0.6:
-        insights.append(f"💡 {ch} likely a strong performance driver")
-    elif val > 0.3:
-        insights.append(f"💡 {ch} shows moderate impact")
-    elif val < 0:
-        insights.append(f"💡 {ch} may have delayed or indirect impact")
-
-# =========================
-# DISPLAY INSIGHTS
-# =========================
-if insights:
-    for insight in insights:
-        st.markdown(f"- {insight}")
-else:
-    st.info("No strong insights detected from current data")
-    
+            # Display
+            if insights:
+                for ins in insights:
+                    st.markdown(f"- {ins}")
+            else:
+                st.info("No strong insights detected")
 # =========================
 # FUNCTIONS
 # =========================

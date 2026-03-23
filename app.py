@@ -49,7 +49,7 @@ st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix 
 # =========================
 # TABS
 # =========================
-tab1, tab2 = st.tabs(["📊 Dashboard", "📘 Learn MMM"])
+tab1, tab2 = st.tabs(["📊 Dashboard", "❓ Help"])
 
 # =========================
 # FUNCTIONS
@@ -67,10 +67,9 @@ def hill_saturation(x, alpha, gamma):
 # INSTRUCTIONS TAB
 # =========================
 with tab2:
-    st.header("📘 How to use?")
+    st.header("📘 📘 How to Use This MMM Tool")
 
     st.markdown("""
-## 📘 How to Use This MMM Tool
 
 ### 🔁 Adstock (Decay Rate)
 Adstock models the **carryover effect of advertising over time**.

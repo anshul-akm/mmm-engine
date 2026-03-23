@@ -280,15 +280,16 @@ with tab1:
             # RESPONSE CURVES
             # =========================
             st.subheader("📈 Response Curves")
+            cols = st.columns(2)  # show 2 per row
 
-            for col in spend_cols:
+            for i, col in enumerate(spend_cols):
                 p = params[col]
                 x = np.linspace(0, df[col].max()*1.5, 50)
                 y_curve = hill_saturation(adstock_transform(x, p["decay"]), p["alpha"], p["gamma"])
-
                 curve = pd.DataFrame({"Spend": x, "Response": y_curve})
-                st.markdown(f"**{col}**")
-                st.line_chart(curve.set_index("Spend"))
+                with cols[i % 2]:
+                    st.markdown(f"**{col}**")
+                    st.line_chart(curve.set_index("Spend"), height=250)
 
             # =========================
             # SCENARIO SIMULATOR
@@ -314,15 +315,23 @@ with tab1:
             predicted = model.predict(scenario_X)[0]
             st.metric("📊 Predicted Sales", round(predicted,2))
 
+            
             # =========================
-            # BUDGET OPTIMIZER
+            # BUDGET OPTIMIZER (FIXED)
             # =========================
             st.subheader("💰 Budget Optimizer")
 
             total_budget = st.number_input("Total Budget", value=1000000)
 
-            weights = roi_df.clip(lower=0)
-            weights = weights / weights.sum()
+            roi_clean = roi_df.replace([np.inf, -np.inf], np.nan).fillna(0)
+
+            weights = roi_clean.clip(lower=0)
+
+            if weights.sum() == 0:
+                st.warning("⚠️ Cannot optimize budget (all ROI ≤ 0). Showing equal allocation.")
+                weights = pd.Series([1/len(spend_cols)]*len(spend_cols), index=spend_cols)
+            else:
+                weights = weights / weights.sum()
 
             alloc = weights * total_budget
 
@@ -333,7 +342,6 @@ with tab1:
 
             st.dataframe(opt_df, use_container_width=True)
             st.bar_chart(opt_df.set_index("Channel"))
-
             # =========================
             # DOWNLOAD
             # =========================

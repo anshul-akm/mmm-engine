@@ -43,8 +43,8 @@ st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
 st.image("logo.png", width=1500)
 st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<h1>Anshul MMM Intelligence 🚀</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix Modeling</h4>", unsafe_allow_html=True)
+st.markdown("<h1>Welcome to MMM Regressor 🚀</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix Modeling by Anshul</h4>", unsafe_allow_html=True)
 
 # =========================
 # TABS
@@ -200,7 +200,7 @@ Gamma determines **when diminishing returns begin**.
 
 ---
 
-Built with ❤️ by Anshul Analytics
+Built with ❤️ by Anshul
 """)
 
 # =========================

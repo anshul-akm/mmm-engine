@@ -19,7 +19,11 @@ st.markdown(
     "<h2 style='text-align: center;'>Anshul's MMM Regressor Engine 🚀</h2>",
     unsafe_allow_html=True
 )
-
+st.set_page_config(
+    page_title="Anshul MMM Engine",
+    page_icon="🤖",
+    layout="wide"
+)
 # =========================
 # FUNCTIONS
 # =========================

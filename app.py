@@ -49,8 +49,128 @@ st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix 
 # =========================
 # TABS
 # =========================
-tab1, tab2 = st.tabs(["📊 Dashboard", "❓ Help"])
+tab1, tab2, tab3 = st.tabs(["📊 MMM Dashboard", "📊 EDA", "❓ Help"])
+# =========================
+# EDA TAB
+# =========================
+with tab2:
 
+    st.header("📊 Exploratory Data Analysis")
+
+    file = st.file_uploader("Upload CSV for EDA", type=["csv"], key="eda_upload")
+
+    if file:
+        df = pd.read_csv(file)
+
+        st.subheader("📄 Data Preview")
+        st.dataframe(df.head(), use_container_width=True)
+
+        numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+
+        # =========================
+        # COLUMN SELECTION
+        # =========================
+        col1, col2 = st.columns(2)
+        sales_col = col1.selectbox("Select Sales Column", numeric_cols, key="eda_sales")
+        spend_cols = col2.multiselect("Select Spend Columns", numeric_cols, key="eda_spend")
+
+        if sales_col and spend_cols:
+
+            # =========================
+            # TIME SERIES
+            # =========================
+            st.subheader("📈 Sales & Spend Over Time")
+
+            ts_df = df[[sales_col] + spend_cols].copy()
+            st.line_chart(ts_df)
+
+            # =========================
+            # CORRELATION HEATMAP
+            # =========================
+            st.subheader("🔥 Correlation Heatmap")
+
+            corr = df[[sales_col] + spend_cols].corr()
+
+            st.dataframe(corr.style.background_gradient(cmap="coolwarm"))
+
+            # =========================
+            # CORRELATION WITH SALES
+            # =========================
+            st.subheader("📊 Correlation with Sales")
+
+            sales_corr = corr[sales_col].drop(sales_col).sort_values(ascending=False)
+
+            st.bar_chart(sales_corr)
+
+            # =========================
+            # VIF (MULTICOLLINEARITY)
+            # =========================
+            st.subheader("⚠️ VIF (Multicollinearity Check)")
+
+            from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+            X = df[spend_cols].dropna()
+
+            vif_data = pd.DataFrame()
+            vif_data["Channel"] = spend_cols
+            vif_data["VIF"] = [
+                variance_inflation_factor(X.values, i)
+                for i in range(len(spend_cols))
+            ]
+
+            st.dataframe(vif_data)
+
+            st.markdown("""
+            **Interpretation:**
+            - VIF < 5 → Good  
+            - VIF 5–10 → Moderate multicollinearity  
+            - VIF > 10 → High multicollinearity (problematic)
+            """)
+
+# =========================
+# AUTO INSIGHTS
+# =========================
+st.subheader("🧠 Auto Insights")
+
+insights = []
+
+# 1. Top correlated channels
+top_channels = sales_corr.head(3)
+for ch, val in top_channels.items():
+    insights.append(f"📈 {ch} has strong positive correlation with sales ({val:.2f})")
+
+# 2. Negative correlation warning
+neg_channels = sales_corr[sales_corr < 0]
+for ch, val in neg_channels.items():
+    insights.append(f"🚨 {ch} shows negative correlation with sales ({val:.2f}) → investigate tracking or lag effects")
+
+# 3. VIF warnings
+high_vif = vif_data[vif_data["VIF"] > 10]
+for _, row in high_vif.iterrows():
+    insights.append(f"⚠️ {row['Channel']} has very high multicollinearity (VIF={row['VIF']:.1f})")
+
+moderate_vif = vif_data[(vif_data["VIF"] > 5) & (vif_data["VIF"] <= 10)]
+for _, row in moderate_vif.iterrows():
+    insights.append(f"⚠️ {row['Channel']} has moderate multicollinearity (VIF={row['VIF']:.1f})")
+
+# 4. Channel behavior hints
+for ch, val in sales_corr.items():
+    if val > 0.6:
+        insights.append(f"💡 {ch} likely a strong performance driver")
+    elif val > 0.3:
+        insights.append(f"💡 {ch} shows moderate impact")
+    elif val < 0:
+        insights.append(f"💡 {ch} may have delayed or indirect impact")
+
+# =========================
+# DISPLAY INSIGHTS
+# =========================
+if insights:
+    for insight in insights:
+        st.markdown(f"- {insight}")
+else:
+    st.info("No strong insights detected from current data")
+    
 # =========================
 # FUNCTIONS
 # =========================

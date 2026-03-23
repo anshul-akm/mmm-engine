@@ -43,9 +43,14 @@ h1, h2, h3 {text-align:center; color:#00FFAA;}
 # =========================
 # HEADER
 # =========================
-st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-st.image("logo.png", width=150)
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown(
+    """
+    <div style='display: flex; justify-content: center;'>
+        <img src='logo.png' width='250'>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.markdown("<h1>Welcome to MMM Engine 🚀</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix Modeling by Anshul</h4>", unsafe_allow_html=True)

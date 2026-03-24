@@ -3,10 +3,9 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split, KFold
+from sklearn.model_selection import train_test_split
 import statsmodels.api as sm
 import time
-import os
 
 # =========================
 # PAGE CONFIG
@@ -14,37 +13,25 @@ import os
 st.set_page_config(page_title="Anshul MMM Intelligence", layout="wide")
 
 # =========================
-# PASSWORD (IMPROVED)
+# PASSWORD
 # =========================
 password = st.text_input("🔒 Enter Password", type="password")
-if password != os.getenv("APP_PASSWORD", "anshul123"):
+if password != "anshul123":
     st.stop()
 
 # =========================
-# CSS (UPGRADED PREMIUM UI)
+# CSS (AESTHETIC UI)
 # =========================
 st.markdown("""
 <style>
 .block-container {padding-top: 1rem;}
 h1, h2, h3 {text-align:center; color:#00FFAA;}
-
 .card {
     padding:20px;
-    border-radius:16px;
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    box-shadow:0px 0px 20px rgba(0,255,170,0.25);
-    margin-bottom:15px;
-    transition: 0.3s;
-}
-.card:hover {
-    transform: scale(1.02);
-}
-
-[data-testid="stMetric"] {
+    border-radius:12px;
     background-color:#111;
-    padding:10px;
-    border-radius:10px;
     box-shadow:0px 0px 10px rgba(0,255,170,0.2);
+    margin-bottom:15px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -60,32 +47,12 @@ st.markdown("<h1>Welcome to MMM Engine 🚀</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix Modeling by Anshul</h4>", unsafe_allow_html=True)
 
 # =========================
-# FUNCTIONS
-# =========================
-def adstock_transform(x, decay):
-    result = np.zeros(len(x))
-    for t in range(len(x)):
-        result[t] = x[t] + (decay * result[t-1] if t > 0 else 0)
-    return result
-
-def hill_saturation(x, alpha, gamma):
-    return (x**alpha) / (x**alpha + gamma**alpha)
-
-def detect_best_lag(x, y, max_lag=12):
-    corrs = []
-    for lag in range(max_lag):
-        shifted = np.roll(x, lag)
-        corr = np.corrcoef(shifted[lag:], y[lag:])[0,1]
-        corrs.append(corr)
-    return np.argmax(corrs), max(corrs)
-
-# =========================
 # TABS
 # =========================
 tab1, tab2, tab3 = st.tabs(["📊 MMM Dashboard", "📊 EDA", "❓ Help"])
 
 # =========================
-# EDA TAB
+# EDA TAB (FINAL CLEAN VERSION)
 # =========================
 with tab2:
 
@@ -96,6 +63,9 @@ with tab2:
     if file:
         df = pd.read_csv(file)
 
+        # =========================
+        # DATA PREVIEW
+        # =========================
         st.subheader("📄 Data Preview")
         st.dataframe(df.head(), use_container_width=True)
 
@@ -107,43 +77,170 @@ with tab2:
 
         if sales_col and spend_cols:
 
-            # DATA QUALITY
-            st.subheader("🧪 Data Quality Check")
-            issues = []
-            if df.isnull().sum().sum() > 0:
-                issues.append("Missing values detected")
-
-            for col in spend_cols:
-                if df[col].std() == 0:
-                    issues.append(f"{col} has no variation")
-
-            if issues:
-                for i in issues:
-                    st.warning(i)
-            else:
-                st.success("Data looks clean")
-
+            # =========================
             # TIME SERIES
+            # =========================
             st.subheader("📈 Sales & Spend Over Time")
-            st.line_chart(df[[sales_col] + spend_cols])
 
-            # CORRELATION
+            ts_df = df[[sales_col] + spend_cols].copy()
+            st.line_chart(ts_df)
+
+            # =========================
+            # CORRELATION MATRIX
+            # =========================
             st.subheader("🔥 Correlation Matrix")
-            corr = df[[sales_col] + spend_cols].corr()
-            st.dataframe(corr)
 
-            # LAG DETECTION
-            st.subheader("⏳ Lag Detection")
-            for col in spend_cols:
-                lag, c = detect_best_lag(df[col].values, df[sales_col].values)
-                st.markdown(f"- **{col}** → Lag {lag} (corr {c:.2f})")
+            corr = df[[sales_col] + spend_cols].corr()
+            st.dataframe(corr, use_container_width=True)
+
+            # =========================
+            # CORRELATION WITH SALES
+            # =========================
+            st.subheader("📊 Correlation with Sales")
+
+            sales_corr = corr[sales_col].drop(sales_col).sort_values(ascending=False)
+            st.bar_chart(sales_corr)
+
+            # =========================
+            # VIF (MULTICOLLINEARITY)
+            # =========================
+            st.subheader("⚠️ VIF (Multicollinearity Check)")
+
+            from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+            X = df[spend_cols].dropna()
+
+            vif_data = pd.DataFrame()
+            vif_data["Channel"] = spend_cols
+            vif_data["VIF"] = [
+                variance_inflation_factor(X.values, i)
+                for i in range(len(spend_cols))
+            ]
+
+            st.dataframe(vif_data, use_container_width=True)
+
+            st.markdown("""
+            **Interpretation:**
+            - VIF < 5 → Good  
+            - VIF 5–10 → Moderate multicollinearity  
+            - VIF > 10 → High multicollinearity (problematic)
+            """)
+
+            # =========================
+            # AUTO INSIGHTS
+            # =========================
+            st.subheader("🧠 Auto Insights")
+
+            insights = []
+
+            # Top correlations
+            for ch, val in sales_corr.head(3).items():
+                insights.append(f"📈 {ch} strongly correlates with sales ({val:.2f})")
+
+            # Negative correlation
+            for ch, val in sales_corr[sales_corr < 0].items():
+                insights.append(f"🚨 {ch} negatively correlates with sales ({val:.2f}) — check lag or tracking issues")
+
+            # VIF warnings
+            for _, row in vif_data.iterrows():
+                if row["VIF"] > 10:
+                    insights.append(f"⚠️ {row['Channel']} has high multicollinearity (VIF={row['VIF']:.1f})")
+                elif row["VIF"] > 5:
+                    insights.append(f"⚠️ {row['Channel']} has moderate multicollinearity (VIF={row['VIF']:.1f})")
+
+            # Display insights
+            if insights:
+                for ins in insights:
+                    st.markdown(f"- {ins}")
+            else:
+                st.info("No strong insights detected")
+
+    else:
+        st.info("👆 Upload a CSV file to begin EDA")
+# =========================
+# FUNCTIONS
+# =========================
+def adstock_transform(x, decay):
+    result = np.zeros(len(x))
+    for t in range(len(x)):
+        result[t] = x[t] + (decay * result[t-1] if t > 0 else 0)
+    return result
+
+def hill_saturation(x, alpha, gamma):
+    return (x**alpha) / (x**alpha + gamma**alpha)
 
 # =========================
-# HELP TAB
+# INSTRUCTIONS TAB
 # =========================
 with tab3:
-    st.header("📘 MMM Guide")
-    st.write("Use adstock, saturation, and regression to understand marketing impact.")
+    st.header("📘 How to Use This MMM Tool")
+
+    st.markdown("""
+
+### 🔁 Adstock (Decay Rate)
+Adstock models the **carryover effect of advertising over time**.
+
+- **Low decay (0.0 – 0.3)** → Immediate impact, fades quickly  
+- **Medium decay (0.3 – 0.6)** → Moderate carryover  
+- **High decay (0.6 – 0.9)** → Long-lasting impact  
+
+👉 Use higher values for **brand channels (TV, YouTube)**  
+👉 Use lower values for **performance channels (Search, Meta Ads)**  
+
+---
+
+### 📈 Alpha (Response Curve Shape)
+Alpha controls the **steepness of the response curve**.
+
+- **Low alpha (~0.5 – 1.0)** → Gradual increase in returns  
+- **Medium alpha (~1.0 – 2.0)** → Balanced response  
+- **High alpha (>2.0)** → Sharp increase after threshold  
+
+👉 Higher alpha means **strong response after a certain spend level**
+
+---
+
+### 📉 Gamma (Saturation Level)
+Gamma determines **when diminishing returns begin**.
+
+- **Low gamma** → Saturation happens early  
+- **High gamma** → Saturation happens later  
+
+👉 Low gamma = good for **performance channels**  
+👉 High gamma = suitable for **brand-building channels**
+
+---
+
+### 🎯 Practical Guidelines
+
+| Channel Type     | Decay | Alpha | Gamma |
+|------------------|------|-------|-------|
+| TV / Branding    | High | Medium | High |
+| Digital Display  | Medium | Medium | Medium |
+| Search / Performance | Low | High | Low |
+
+---
+
+### ⚠️ Model Diagnostics
+
+- If **Train R² is much higher than Test R²** → Model is likely **overfitting**
+- If **ROI values look unrealistic** → Check:
+  - data quality  
+  - extreme parameter values  
+
+---
+
+### 💡 What You Can Do With This Tool
+
+- 📊 Measure channel contribution  
+- 📈 Understand diminishing returns  
+- 💰 Optimize budget allocation  
+- 🎯 Run scenario simulations  
+
+---
+
+Built with ❤️ by Anshul
+""")
 
 # =========================
 # MAIN DASHBOARD
@@ -155,7 +252,8 @@ with tab1:
     if file:
         df = pd.read_csv(file)
 
-        st.dataframe(df.head())
+        st.markdown("### 📊 Data Preview")
+        st.dataframe(df.head(), use_container_width=True)
 
         numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
@@ -163,7 +261,9 @@ with tab1:
         sales_col = col1.selectbox("Sales Column", numeric_cols)
         spend_cols = col2.multiselect("Spend Columns", numeric_cols)
 
+        # =========================
         # SIDEBAR
+        # =========================
         st.sidebar.header("⚙️ Controls")
 
         params = {}
@@ -177,16 +277,19 @@ with tab1:
 
         ridge_alpha = st.sidebar.slider("Ridge Alpha", 0.1, 10.0, 1.0)
 
+        # =========================
+        # RUN MODEL
+        # =========================
         if st.button("🚀 Run MMM Model"):
 
-            # SAFE ANIMATION
+            # 🎬 Animation
             st.markdown("### 🤖 MMM Engine Initializing...")
-            if os.path.exists("robot.mp4"):
+            try:
                 st.video(open("robot.mp4", "rb").read())
-            else:
+            except:
                 st.info("Add robot.mp4 for animation")
 
-            # PROGRESS
+            # ⏳ Cinematic Progress
             status = st.empty()
             progress = st.progress(0)
 
@@ -199,17 +302,21 @@ with tab1:
 
             for i, step in enumerate(steps):
                 status.markdown(f"<div class='card'>{step}</div>", unsafe_allow_html=True)
-                time.sleep(0.6)
+                time.sleep(0.8)
                 progress.progress((i+1)/len(steps))
 
-            # TRANSFORM
+            # =========================
+            # MODEL
+            # =========================
             transformed_cols = []
+
             for col in spend_cols:
                 p = params[col]
                 ad = adstock_transform(df[col].values, p["decay"])
                 fr = hill_saturation(ad, p["alpha"], p["gamma"])
-                df[col+"_t"] = fr
-                transformed_cols.append(col+"_t")
+                new_col = col+"_t"
+                df[new_col] = fr
+                transformed_cols.append(new_col)
 
             df["trend"] = np.arange(len(df))
             df["sin"] = np.sin(2*np.pi*df.index/12)
@@ -223,7 +330,6 @@ with tab1:
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(X)
 
-            # TRAIN TEST
             X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
 
             model = Ridge(alpha=ridge_alpha)
@@ -232,17 +338,6 @@ with tab1:
             train_r2 = model.score(X_train, y_train)
             test_r2 = model.score(X_test, y_test)
 
-            # CROSS VALIDATION
-            kf = KFold(n_splits=5, shuffle=True, random_state=42)
-            cv_scores = []
-
-            for train_idx, test_idx in kf.split(X_scaled):
-                model.fit(X_scaled[train_idx], y.iloc[train_idx])
-                cv_scores.append(model.score(X_scaled[test_idx], y.iloc[test_idx]))
-
-            cv_r2 = np.mean(cv_scores)
-
-            # ORIGINAL CONTRIBUTION (KEPT)
             coeffs = model.coef_
             contrib = pd.DataFrame(X_scaled * coeffs, columns=features)
             total_contrib = contrib.sum()
@@ -250,45 +345,48 @@ with tab1:
             media_contrib = total_contrib[transformed_cols]
             media_pct = (media_contrib / media_contrib.sum()) * 100
 
-            # NEW CONTRIBUTION
-            base_pred = model.predict(X_scaled)
+            baseline = model.intercept_ + total_contrib["trend"] + total_contrib["sin"] + total_contrib["cos"]
 
-            inc_contrib = {}
-            for i, col in enumerate(transformed_cols):
-                X_temp = X_scaled.copy()
-                X_temp[:, i] = 0
-                pred_without = model.predict(X_temp)
-                inc_contrib[spend_cols[i]] = (base_pred - pred_without).sum()
-
-            inc_contrib = pd.Series(inc_contrib)
-            inc_pct = inc_contrib / inc_contrib.sum() * 100
+            total_sales = y.sum()
+            baseline_pct = baseline / total_sales * 100
+            promo_pct = 100 - baseline_pct
 
             # ROI
             spend_totals = df[spend_cols].sum()
-            roi_df = media_contrib / spend_totals.replace(0, np.nan)
+            roi = {}
+            for i, col in enumerate(spend_cols):
+                roi[col] = media_contrib.iloc[i] / spend_totals[col]
+            roi_df = pd.Series(roi)
 
-            # METRICS
+            # =========================
+            # DASHBOARD
+            # =========================
             st.success("✅ MMM Analysis Ready")
 
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Train R²", round(train_r2,3))
             m2.metric("Test R²", round(test_r2,3))
-            m3.metric("CV R²", round(cv_r2,3))
-            m4.metric("Best Channel", roi_df.idxmax())
+            m3.metric("Baseline %", f"{baseline_pct:.1f}%")
+            m4.metric("Promo %", f"{promo_pct:.1f}%")
 
-            # CHARTS
-            st.subheader("📊 Contribution")
-            st.bar_chart(media_pct)
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("<div class='card'>", unsafe_allow_html=True)
+                st.subheader("📊 Contribution")
+                st.bar_chart(media_pct)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-            st.subheader("📊 Advanced Contribution")
-            st.bar_chart(inc_pct)
+            with c2:
+                st.markdown("<div class='card'>", unsafe_allow_html=True)
+                st.subheader("📈 ROI")
+                st.bar_chart(roi_df)
+                st.markdown("</div>", unsafe_allow_html=True)
 
-            st.subheader("📈 ROI")
-            st.bar_chart(roi_df)
-
-            # RESPONSE CURVES (UNCHANGED)
+            # =========================
+            # RESPONSE CURVES
+            # =========================
             st.subheader("📈 Response Curves")
-            cols = st.columns(2)
+            cols = st.columns(2)  # show 2 per row
 
             for i, col in enumerate(spend_cols):
                 p = params[col]
@@ -297,41 +395,14 @@ with tab1:
                 curve = pd.DataFrame({"Spend": x, "Response": y_curve})
                 with cols[i % 2]:
                     st.markdown(f"**{col}**")
-                    st.line_chart(curve.set_index("Spend"))
+                    st.line_chart(curve.set_index("Spend"), height=250)
 
-            # SMART RECOMMENDATIONS
-            st.subheader("🧠 Recommendations")
-            for col in spend_cols:
-                if roi_df[col] > roi_df.mean():
-                    st.markdown(f"- 📈 Increase {col}")
-                else:
-                    st.markdown(f"- 📉 Reduce {col}")
-
-            # EXECUTIVE SUMMARY
-            st.subheader("📌 Executive Summary")
-            best = roi_df.idxmax()
-            worst = roi_df.idxmin()
-
-            st.markdown(f"""
-            <div class='card'>
-            🔥 Best Channel: {best} <br>
-            ⚠️ Weak Channel: {worst} <br>
-            💡 Shift budget from {worst} → {best}
-            </div>
-            """, unsafe_allow_html=True)
-
-            # AI INSIGHTS
-            st.subheader("🤖 AI Insights")
-            st.write(f"{best} is driving the highest ROI")
-            st.write(f"{worst} is underperforming")
-
-            if train_r2 - test_r2 > 0.1:
-                st.warning("Model may be overfitting")
-
-            # SCENARIO
+            # =========================
+            # SCENARIO SIMULATOR
+            # =========================
             st.subheader("🎯 Scenario Simulator")
-            scenario = {}
 
+            scenario = {}
             for col in spend_cols:
                 change = st.slider(f"{col} Spend Change (%)", -50, 100, 0)
                 scenario[col] = df[col].mean() * (1 + change/100)
@@ -350,8 +421,37 @@ with tab1:
             predicted = model.predict(scenario_X)[0]
             st.metric("📊 Predicted Sales", round(predicted,2))
 
+            
+            # =========================
+            # BUDGET OPTIMIZER (FIXED)
+            # =========================
+            st.subheader("💰 Budget Optimizer")
+
+            total_budget = st.number_input("Total Budget", value=1000000)
+
+            roi_clean = roi_df.replace([np.inf, -np.inf], np.nan).fillna(0)
+
+            weights = roi_clean.clip(lower=0)
+
+            if weights.sum() == 0:
+                st.warning("⚠️ Cannot optimize budget (all ROI ≤ 0). Showing equal allocation.")
+                weights = pd.Series([1/len(spend_cols)]*len(spend_cols), index=spend_cols)
+            else:
+                weights = weights / weights.sum()
+
+            alloc = weights * total_budget
+
+            opt_df = pd.DataFrame({
+                "Channel": spend_cols,
+                "Budget": alloc.values
+            })
+
+            st.dataframe(opt_df, use_container_width=True)
+            st.bar_chart(opt_df.set_index("Channel"))
+            # =========================
             # DOWNLOAD
+            # =========================
             st.download_button("📥 Download Results", data=media_pct.to_csv(), file_name="mmm_results.csv")
 
     else:
-        st.info("Upload dataset to begin")
+        st.info("👆 Upload your dataset to begin")

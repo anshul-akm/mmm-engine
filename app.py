@@ -164,97 +164,97 @@ if page == "📈 EDA":
         st.session_state.df = pd.read_csv(file)
     df = st.session_state.df
 
+    # =========================
+    # DATA PREVIEW
+    # =========================
+    st.subheader("📄 Data Preview")
+    st.dataframe(df.head(), use_container_width=True)
+
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+
+    col1, col2 = st.columns(2)
+    sales_col = col1.selectbox("Select Sales Column", numeric_cols, key="eda_sales")
+    spend_cols = col2.multiselect("Select Spend Columns", numeric_cols, key="eda_spend")
+
+    if sales_col and spend_cols:
+
         # =========================
-        # DATA PREVIEW
+        # TIME SERIES
         # =========================
-        st.subheader("📄 Data Preview")
-        st.dataframe(df.head(), use_container_width=True)
+        st.subheader("📈 Sales & Spend Over Time")
 
-        numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+        ts_df = df[[sales_col] + spend_cols].copy()
+        st.line_chart(ts_df)
 
-        col1, col2 = st.columns(2)
-        sales_col = col1.selectbox("Select Sales Column", numeric_cols, key="eda_sales")
-        spend_cols = col2.multiselect("Select Spend Columns", numeric_cols, key="eda_spend")
+        # =========================
+        # CORRELATION MATRIX
+        # =========================
+        st.subheader("🔥 Correlation Matrix")
 
-        if sales_col and spend_cols:
+        corr = df[[sales_col] + spend_cols].corr()
+        st.dataframe(corr, use_container_width=True)
 
-            # =========================
-            # TIME SERIES
-            # =========================
-            st.subheader("📈 Sales & Spend Over Time")
+        # =========================
+        # CORRELATION WITH SALES
+        # =========================
+        st.subheader("📊 Correlation with Sales")
 
-            ts_df = df[[sales_col] + spend_cols].copy()
-            st.line_chart(ts_df)
+        sales_corr = corr[sales_col].drop(sales_col).sort_values(ascending=False)
+        st.bar_chart(sales_corr)
 
-            # =========================
-            # CORRELATION MATRIX
-            # =========================
-            st.subheader("🔥 Correlation Matrix")
+        # =========================
+        # VIF (MULTICOLLINEARITY)
+        # =========================
+        st.subheader("⚠️ VIF (Multicollinearity Check)")
 
-            corr = df[[sales_col] + spend_cols].corr()
-            st.dataframe(corr, use_container_width=True)
+        from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-            # =========================
-            # CORRELATION WITH SALES
-            # =========================
-            st.subheader("📊 Correlation with Sales")
+        X = df[spend_cols].dropna()
 
-            sales_corr = corr[sales_col].drop(sales_col).sort_values(ascending=False)
-            st.bar_chart(sales_corr)
+        vif_data = pd.DataFrame()
+        vif_data["Channel"] = spend_cols
+        vif_data["VIF"] = [
+            variance_inflation_factor(X.values, i)
+            for i in range(len(spend_cols))
+        ]
 
-            # =========================
-            # VIF (MULTICOLLINEARITY)
-            # =========================
-            st.subheader("⚠️ VIF (Multicollinearity Check)")
+        st.dataframe(vif_data, use_container_width=True)
 
-            from statsmodels.stats.outliers_influence import variance_inflation_factor
+        st.markdown("""
+        **Interpretation:**
+        - VIF < 5 → Good  
+        - VIF 5–10 → Moderate multicollinearity  
+        - VIF > 10 → High multicollinearity (problematic)
+        """)
 
-            X = df[spend_cols].dropna()
+        # =========================
+        # AUTO INSIGHTS
+        # =========================
+        st.subheader("🧠 Auto Insights")
 
-            vif_data = pd.DataFrame()
-            vif_data["Channel"] = spend_cols
-            vif_data["VIF"] = [
-                variance_inflation_factor(X.values, i)
-                for i in range(len(spend_cols))
-            ]
+        insights = []
 
-            st.dataframe(vif_data, use_container_width=True)
+        # Top correlations
+        for ch, val in sales_corr.head(3).items():
+            insights.append(f"📈 {ch} strongly correlates with sales ({val:.2f})")
 
-            st.markdown("""
-            **Interpretation:**
-            - VIF < 5 → Good  
-            - VIF 5–10 → Moderate multicollinearity  
-            - VIF > 10 → High multicollinearity (problematic)
-            """)
+        # Negative correlation
+        for ch, val in sales_corr[sales_corr < 0].items():
+            insights.append(f"🚨 {ch} negatively correlates with sales ({val:.2f}) — check lag or tracking issues")
 
-            # =========================
-            # AUTO INSIGHTS
-            # =========================
-            st.subheader("🧠 Auto Insights")
+        # VIF warnings
+        for _, row in vif_data.iterrows():
+            if row["VIF"] > 10:
+                insights.append(f"⚠️ {row['Channel']} has high multicollinearity (VIF={row['VIF']:.1f})")
+            elif row["VIF"] > 5:
+                insights.append(f"⚠️ {row['Channel']} has moderate multicollinearity (VIF={row['VIF']:.1f})")
 
-            insights = []
-
-            # Top correlations
-            for ch, val in sales_corr.head(3).items():
-                insights.append(f"📈 {ch} strongly correlates with sales ({val:.2f})")
-
-            # Negative correlation
-            for ch, val in sales_corr[sales_corr < 0].items():
-                insights.append(f"🚨 {ch} negatively correlates with sales ({val:.2f}) — check lag or tracking issues")
-
-            # VIF warnings
-            for _, row in vif_data.iterrows():
-                if row["VIF"] > 10:
-                    insights.append(f"⚠️ {row['Channel']} has high multicollinearity (VIF={row['VIF']:.1f})")
-                elif row["VIF"] > 5:
-                    insights.append(f"⚠️ {row['Channel']} has moderate multicollinearity (VIF={row['VIF']:.1f})")
-
-            # Display insights
-            if insights:
-                for ins in insights:
-                    st.markdown(f"- {ins}")
-            else:
-                st.info("No strong insights detected")
+        # Display insights
+        if insights:
+            for ins in insights:
+                st.markdown(f"- {ins}")
+        else:
+            st.info("No strong insights detected")
 
     else:
         st.info("👆 Upload a CSV file to begin EDA")
@@ -351,7 +351,7 @@ if page == "📊 Dashboard":
     df = st.session_state.df
     if df is None:
         st.info("👆 Upload a dataset in EDA section first")
-        st.stop()
+    else:
 
         st.markdown("### 📊 Data Preview")
         st.dataframe(df.head(), use_container_width=True)

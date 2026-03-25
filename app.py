@@ -6,6 +6,37 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import statsmodels.api as sm
 import time
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+def generate_pdf_report(media_pct, roi_df, insights, filename="mmm_report.pdf"):
+
+    doc = SimpleDocTemplate(filename)
+    styles = getSampleStyleSheet()
+    content = []
+
+    content.append(Paragraph("MMM Analysis Report", styles["Title"]))
+    content.append(Spacer(1, 12))
+
+    content.append(Paragraph("Channel Contributions:", styles["Heading2"]))
+    for ch, val in media_pct.items():
+        content.append(Paragraph(f"{ch}: {val:.2f}%", styles["Normal"]))
+
+    content.append(Spacer(1, 12))
+
+    content.append(Paragraph("ROI Summary:", styles["Heading2"]))
+    for ch, val in roi_df.items():
+        content.append(Paragraph(f"{ch}: {val:.2f}", styles["Normal"]))
+
+    content.append(Spacer(1, 12))
+
+    content.append(Paragraph("Key Insights:", styles["Heading2"]))
+    for ins in insights:
+        content.append(Paragraph(ins, styles["Normal"]))
+
+    doc.build(content)
+
+    with open(filename, "rb") as f:
+        return f.read()
 
 # =========================
 # SESSION STATE INIT
@@ -586,6 +617,51 @@ if page == "📊 Dashboard":
             st.subheader("📈 ROI")
             st.bar_chart(roi_df)
             st.markdown("</div>", unsafe_allow_html=True)
+        # =========================
+        # AUTO INSIGHTS
+        # =========================
+        st.markdown("### 🧠 Key Insights")
+        
+        insights = []
+        
+        # Top channels
+        top_channels = media_pct.sort_values(ascending=False).head(3)
+        for ch, val in top_channels.items():
+            insights.append(f"📈 {ch} is a top driver contributing {val:.1f}% of sales")
+        
+        # Low ROI channels
+        low_roi = roi_df.sort_values().head(2)
+        for ch, val in low_roi.items():
+            insights.append(f"⚠️ {ch} has low ROI ({val:.2f}) — consider reducing spend")
+        
+        # High ROI channels
+        high_roi = roi_df.sort_values(ascending=False).head(2)
+        for ch, val in high_roi.items():
+            insights.append(f"💰 {ch} has strong ROI ({val:.2f}) — potential to scale")
+        
+        # Baseline vs promo
+        if baseline_pct > 70:
+            insights.append("🏠 Majority of sales are driven by baseline (organic/brand strength)")
+        else:
+            insights.append("📢 Promotions/media are major drivers of sales")
+        
+        # Display
+        for ins in insights:
+            st.markdown(f"- {ins}")
+        st.session_state["insights"] = insights
+        # =========================
+        # BUDGET SUGGESTION
+        # =========================
+        st.markdown("### 💡 Budget Recommendation")
+        
+        top_growth = roi_df.sort_values(ascending=False).head(3).index.tolist()
+        cut_channels = roi_df.sort_values().head(2).index.tolist()
+        
+        st.markdown(f"""
+        - 🚀 Increase investment in: **{', '.join(top_growth)}**
+        - ✂️ Reduce spend in: **{', '.join(cut_channels)}**
+        - 🔄 Reallocate budget for better efficiency
+        """)
 
         # =========================
         # STORE RESULTS
@@ -601,12 +677,39 @@ if page == "📊 Dashboard":
         }
 
         # =========================
-        # DOWNLOAD
+        # EXPORT FULL REPORT
         # =========================
+        report_df = pd.DataFrame({
+            "Channel": spend_cols,
+            "Contribution (%)": media_pct.values,
+            "ROI": roi_df.values
+        })
+        
+        # =========================
+        # EXPORT REPORTS
+        # =========================
+        insights = st.session_state.get("insights", [])
+        
+        # CSV Report
+        report_df = pd.DataFrame({
+            "Channel": spend_cols,
+            "Contribution (%)": media_pct.values,
+            "ROI": roi_df.values
+        })
+        
         st.download_button(
-            "📥 Download Results",
-            data=media_pct.to_csv(),
-            file_name="mmm_results.csv"
+            "📥 Download CSV Report",
+            data=report_df.to_csv(index=False),
+            file_name="mmm_report.csv"
+        )
+        
+        # PDF Report
+        pdf_bytes = generate_pdf_report(media_pct, roi_df, insights)
+        
+        st.download_button(
+            "📄 Download PDF Report",
+            data=pdf_bytes,
+            file_name="mmm_report.pdf"
         )
 # =========================
 # SIMULATOR (IMPROVED)
@@ -677,14 +780,15 @@ if page == "🎯 Simulator":
     col1.metric("Baseline Sales", round(baseline_pred, 2))
     col2.metric("New Sales", round(predicted, 2), delta=round(delta, 2))
 # =========================
-# =========================
-# OPTIMIZER (IMPROVED)
+# OPTIMIZER (REAL)
 # =========================
 if page == "💰 Optimizer":
 
     if st.session_state.model_results is None:
         st.warning("Run model first from Dashboard")
         st.stop()
+
+    from scipy.optimize import minimize
 
     data = st.session_state.model_results
     df = st.session_state.df
@@ -700,41 +804,73 @@ if page == "💰 Optimizer":
     total_budget = st.number_input("Total Budget", value=1000000)
 
     # =========================
-    # BASELINE SPEND DISTRIBUTION
+    # OBJECTIVE FUNCTION
     # =========================
-    base_spend = df[spend_cols].mean()
+    def objective(spend_values):
+
+        spend_dict = dict(zip(spend_cols, spend_values))
+        temp_df = pd.DataFrame([spend_dict])
+
+        # Apply transformations
+        for col in spend_cols:
+            p = params[col]
+            ad = adstock_transform(temp_df[col].values, p["decay"])
+            temp_df[col] = hill_saturation(ad, p["alpha"], p["gamma"])
+
+        X = temp_df.reindex(columns=features, fill_value=0)
+        X_scaled = scaler.transform(X)
+
+        pred = model.predict(X_scaled)[0]
+
+        return -pred  # maximize → minimize negative
 
     # =========================
-    # INITIAL ALLOCATION (START POINT)
+    # CONSTRAINT
     # =========================
-    weights = base_spend / base_spend.sum()
-    alloc = weights * total_budget
+    constraints = ({
+        'type': 'eq',
+        'fun': lambda x: np.sum(x) - total_budget
+    })
 
     # =========================
-    # TRANSFORM ALLOCATION THROUGH MODEL
+    # BOUNDS
     # =========================
-    alloc_df = pd.DataFrame([alloc])
+    bounds = [(0, total_budget) for _ in spend_cols]
 
-    for col in spend_cols:
-        p = params[col]
-        ad = adstock_transform(alloc_df[col].values, p["decay"])
-        alloc_df[col] = hill_saturation(ad, p["alpha"], p["gamma"])
+    # =========================
+    # INITIAL GUESS
+    # =========================
+    x0 = np.array([total_budget / len(spend_cols)] * len(spend_cols))
 
-    alloc_X = scaler.transform(
-        alloc_df.reindex(columns=features, fill_value=0)
+    # =========================
+    # OPTIMIZATION
+    # =========================
+    result = minimize(
+        objective,
+        x0,
+        bounds=bounds,
+        constraints=constraints,
+        method='SLSQP'
     )
 
-    predicted_sales = model.predict(alloc_X)[0]
+    optimal_spend = result.x
+
+    # =========================
+    # FINAL PREDICTION
+    # =========================
+    final_pred = -result.fun
 
     # =========================
     # OUTPUT
     # =========================
     opt_df = pd.DataFrame({
         "Channel": spend_cols,
-        "Budget": alloc.values
+        "Optimal Budget": optimal_spend
     })
 
-    st.metric("📊 Expected Sales from Allocation", round(predicted_sales, 2))
+    st.success("✅ Optimal Allocation Computed")
+
+    st.metric("📊 Expected Sales", round(final_pred,2))
 
     st.dataframe(opt_df, use_container_width=True)
     st.bar_chart(opt_df.set_index("Channel"))

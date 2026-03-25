@@ -8,6 +8,15 @@ import statsmodels.api as sm
 import time
 
 # =========================
+# SESSION STATE INIT
+# =========================
+if "df" not in st.session_state:
+    st.session_state.df = None
+
+if "model_results" not in st.session_state:
+    st.session_state.model_results = None
+
+# =========================
 # PAGE CONFIG (UPGRADED)
 # =========================
 st.set_page_config(
@@ -123,23 +132,37 @@ password = st.text_input("🔒 Enter Password", type="password")
 if password != "anshul123":
     st.stop()
 
+# =========================
+# SIDEBAR NAVIGATION
+# =========================
+st.sidebar.title("📊 MMM Intelligence")
 
-# =========================
-# TABS
-# =========================
-tab1, tab2, tab3 = st.tabs(["📊 MMM Dashboard", "📊 EDA", "❓ Help"])
+page = st.sidebar.radio(
+    "Navigation",
+    [
+        "📈 EDA",
+        "📊 Dashboard",
+        "🎯 Simulator",
+        "💰 Optimizer",
+        "📘 Help"
+    ]
+)
+
+st.sidebar.markdown("---")
+st.sidebar.caption("Built by Anshul 🚀")
 
 # =========================
 # EDA TAB (FINAL CLEAN VERSION)
 # =========================
-with tab2:
+if page == "📈 EDA":
 
     st.header("📊 Exploratory Data Analysis")
 
-    file = st.file_uploader("Upload CSV for EDA", type=["csv"], key="eda_upload")
-
+    file = st.file_uploader("Upload CSV", type=["csv"])
+    
     if file:
-        df = pd.read_csv(file)
+        st.session_state.df = pd.read_csv(file)
+    df = st.session_state.df
 
         # =========================
         # DATA PREVIEW
@@ -250,7 +273,7 @@ def hill_saturation(x, alpha, gamma):
 # =========================
 # INSTRUCTIONS TAB
 # =========================
-with tab3:
+if page == "📘 Help":
     st.header("📘 How to Use This MMM Tool")
 
     st.markdown("""
@@ -323,12 +346,12 @@ Built with ❤️ by Anshul
 # =========================
 # MAIN DASHBOARD
 # =========================
-with tab1:
+if page == "📊 Dashboard":
 
-    file = st.file_uploader("Upload CSV", type=["csv"])
-
-    if file:
-        df = pd.read_csv(file)
+    df = st.session_state.df
+    if df is None:
+        st.info("👆 Upload a dataset in EDA section first")
+        st.stop()
 
         st.markdown("### 📊 Data Preview")
         st.dataframe(df.head(), use_container_width=True)
@@ -484,62 +507,101 @@ with tab1:
                 with cols[i % 2]:
                     st.markdown(f"**{col}**")
                     st.line_chart(curve.set_index("Spend"), height=250)
+            st.session_state.model_results = {
+                "model": model,
+                "scaler": scaler,
+                "features": features,
+                "params": params,
+                "spend_cols": spend_cols,
+                "roi_df": roi_df,
+                "media_pct": media_pct
+            }
 
-            # =========================
-            # SCENARIO SIMULATOR
-            # =========================
-            st.subheader("🎯 Scenario Simulator")
 
-            scenario = {}
-            for col in spend_cols:
-                change = st.slider(f"{col} Spend Change (%)", -50, 100, 0)
-                scenario[col] = df[col].mean() * (1 + change/100)
-
-            scenario_df = pd.DataFrame([scenario])
-
-            for col in spend_cols:
-                p = params[col]
-                ad = adstock_transform(scenario_df[col].values, p["decay"])
-                scenario_df[col] = hill_saturation(ad, p["alpha"], p["gamma"])
-
-            scenario_X = scaler.transform(
-                scenario_df.reindex(columns=features, fill_value=0)
-            )
-
-            predicted = model.predict(scenario_X)[0]
-            st.metric("📊 Predicted Sales", round(predicted,2))
-
-            
-            # =========================
-            # BUDGET OPTIMIZER (FIXED)
-            # =========================
-            st.subheader("💰 Budget Optimizer")
-
-            total_budget = st.number_input("Total Budget", value=1000000)
-
-            roi_clean = roi_df.replace([np.inf, -np.inf], np.nan).fillna(0)
-
-            weights = roi_clean.clip(lower=0)
-
-            if weights.sum() == 0:
-                st.warning("⚠️ Cannot optimize budget (all ROI ≤ 0). Showing equal allocation.")
-                weights = pd.Series([1/len(spend_cols)]*len(spend_cols), index=spend_cols)
-            else:
-                weights = weights / weights.sum()
-
-            alloc = weights * total_budget
-
-            opt_df = pd.DataFrame({
-                "Channel": spend_cols,
-                "Budget": alloc.values
-            })
-
-            st.dataframe(opt_df, use_container_width=True)
-            st.bar_chart(opt_df.set_index("Channel"))
             # =========================
             # DOWNLOAD
             # =========================
-            st.download_button("📥 Download Results", data=media_pct.to_csv(), file_name="mmm_results.csv")
+            if st.session_state.model_results is not None:
+                media_pct = st.session_state.model_results["media_pct"]
+                st.download_button(
+                    "📥 Download Results",
+                    data=media_pct.to_csv(),
+                    file_name="mmm_results.csv"
+                )
 
+
+
+# =========================
+# OPTIMIzer
+# =========================        
+if page == "🎯 Simulator":
+
+    if st.session_state.model_results is None:
+        st.warning("Run model first from Dashboard")
+        st.stop()
+
+    data = st.session_state.model_results
+    df = st.session_state.df
+
+    model = data["model"]
+    scaler = data["scaler"]
+    features = data["features"]
+    params = data["params"]
+    spend_cols = data["spend_cols"]
+
+    st.header("🎯 Scenario Simulator")
+
+    scenario = {}
+    for col in spend_cols:
+        change = st.slider(f"{col} Spend Change (%)", -50, 100, 0)
+        scenario[col] = df[col].mean() * (1 + change/100)
+
+    scenario_df = pd.DataFrame([scenario])
+
+    for col in spend_cols:
+        p = params[col]
+        ad = adstock_transform(scenario_df[col].values, p["decay"])
+        scenario_df[col] = hill_saturation(ad, p["alpha"], p["gamma"])
+
+    scenario_X = scaler.transform(
+        scenario_df.reindex(columns=features, fill_value=0)
+    )
+
+    predicted = model.predict(scenario_X)[0]
+    st.metric("📊 Predicted Sales", round(predicted,2))
+
+# =========================
+# OPTIMIzer
+# =========================
+if page == "💰 Optimizer":
+
+    if st.session_state.model_results is None:
+        st.warning("Run model first from Dashboard")
+        st.stop()
+
+    data = st.session_state.model_results
+
+    roi_df = data["roi_df"]
+    spend_cols = data["spend_cols"]
+
+    st.header("💰 Budget Optimizer")
+
+    total_budget = st.number_input("Total Budget", value=1000000)
+
+    roi_clean = roi_df.replace([np.inf, -np.inf], np.nan).fillna(0)
+    weights = roi_clean.clip(lower=0)
+
+    if weights.sum() == 0:
+        weights = pd.Series([1/len(spend_cols)]*len(spend_cols), index=spend_cols)
     else:
-        st.info("👆 Upload your dataset to begin")
+        weights = weights / weights.sum()
+
+    alloc = weights * total_budget
+
+    opt_df = pd.DataFrame({
+        "Channel": spend_cols,
+        "Budget": alloc.values
+    })
+
+    st.dataframe(opt_df, use_container_width=True)
+    st.bar_chart(opt_df.set_index("Channel"))

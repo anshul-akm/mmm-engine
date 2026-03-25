@@ -297,7 +297,34 @@ with col2:
 
 st.markdown("---")
 st.caption("Trusted by Data-Driven Marketing Teams")
+col_left, col_right = st.columns([8, 2])
 
+with col_right:
+    st.markdown(f"""
+    <div style="
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: #E6EDF3;
+    ">
+        <div style="
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        ">
+            {st.session_state.get('user','?')[0].upper()}
+        </div>
+        <span>{st.session_state.get('user','')}</span>
+    </div>
+    """, unsafe_allow_html=True)
 # =========================
 # SIDEBAR NAVIGATION
 # =========================

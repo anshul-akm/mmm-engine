@@ -346,191 +346,229 @@ Built with ❤️ by Anshul
 """)
 
 # =========================
+# =========================
 # MAIN DASHBOARD
 # =========================
 if page == "📊 Dashboard":
 
     df = st.session_state.df
+
     if df is None:
         st.info("👆 Upload a dataset in EDA section first")
-    else:
+        st.stop()
 
-        st.markdown("### 📊 Data Preview")
-        st.dataframe(df.head(), use_container_width=True)
+    st.markdown("### 📊 Data Preview")
+    st.dataframe(df.head(), use_container_width=True)
 
-        numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
-        col1, col2 = st.columns(2)
-        sales_col = col1.selectbox("Sales Column", numeric_cols)
-        spend_cols = col2.multiselect("Spend Columns", numeric_cols)
+    col1, col2 = st.columns(2)
+    sales_col = col1.selectbox("Sales Column", numeric_cols)
+    spend_cols = col2.multiselect("Spend Columns", numeric_cols)
+
+    # =========================
+    # VALIDATION
+    # =========================
+    if not sales_col or not spend_cols:
+        st.warning("⚠️ Please select sales and spend columns")
+        st.stop()
+
+    # =========================
+    # SIDEBAR
+    # =========================
+    st.sidebar.header("⚙️ Controls")
+
+    params = {}
+    for col in spend_cols:
+        st.sidebar.subheader(col)
+        params[col] = {
+            "decay": st.sidebar.slider(f"{col} Decay", 0.0, 1.0, 0.5, key=col+"d"),
+            "alpha": st.sidebar.slider(f"{col} Alpha", 0.1, 3.0, 1.5, key=col+"a"),
+            "gamma": st.sidebar.slider(f"{col} Gamma", 1.0, 200.0, 100.0, key=col+"g")
+        }
+
+    ridge_alpha = st.sidebar.slider("Ridge Alpha", 0.1, 10.0, 1.0)
+
+    # =========================
+    # RUN MODEL
+    # =========================
+    if st.button("🚀 Run MMM Model"):
+
+        st.markdown("### 🤖 MMM Engine Initializing...")
+        try:
+            st.video(open("robot.mp4", "rb").read())
+        except:
+            st.info("Add robot.mp4 for animation")
+
+        status = st.empty()
+        progress = st.progress(0)
+
+        steps = [
+            "🔧 Applying Adstock...",
+            "📉 Applying Saturation...",
+            "🧠 Training Model...",
+            "📊 Calculating Contributions..."
+        ]
+
+        for i, step in enumerate(steps):
+            status.markdown(f"<div class='card'>{step}</div>", unsafe_allow_html=True)
+            time.sleep(0.8)
+            progress.progress((i+1)/len(steps))
 
         # =========================
-        # SIDEBAR
+        # FEATURE ENGINEERING
         # =========================
-        st.sidebar.header("⚙️ Controls")
+        transformed_cols = []
 
-        params = {}
         for col in spend_cols:
-            st.sidebar.subheader(col)
-            params[col] = {
-                "decay": st.sidebar.slider(f"{col} Decay", 0.0, 1.0, 0.5, key=col+"d"),
-                "alpha": st.sidebar.slider(f"{col} Alpha", 0.1, 3.0, 1.5, key=col+"a"),
-                "gamma": st.sidebar.slider(f"{col} Gamma", 1.0, 200.0, 100.0, key=col+"g")
-            }
+            p = params[col]
+            ad = adstock_transform(df[col].values, p["decay"])
+            fr = hill_saturation(ad, p["alpha"], p["gamma"])
+            new_col = col+"_t"
+            df[new_col] = fr
+            transformed_cols.append(new_col)
 
-        ridge_alpha = st.sidebar.slider("Ridge Alpha", 0.1, 10.0, 1.0)
+        df["trend"] = np.arange(len(df))
+        df["sin"] = np.sin(2*np.pi*df.index/12)
+        df["cos"] = np.cos(2*np.pi*df.index/12)
+
+        features = transformed_cols + ["trend","sin","cos"]
+
+        X = df[features]
+        y = df[sales_col]
+
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_scaled, y, test_size=0.2, random_state=42
+        )
 
         # =========================
-        # RUN MODEL
+        # MULTI MODEL TRAINING
         # =========================
-        if st.button("🚀 Run MMM Model"):
+        from sklearn.linear_model import Ridge, Lasso, ElasticNet
+        from sklearn.metrics import mean_absolute_percentage_error
 
-            # 🎬 Animation
-            st.markdown("### 🤖 MMM Engine Initializing...")
-            try:
-                st.video(open("robot.mp4", "rb").read())
-            except:
-                st.info("Add robot.mp4 for animation")
+        models = {
+            "Ridge": Ridge(alpha=ridge_alpha),
+            "Lasso": Lasso(alpha=0.1),
+            "ElasticNet": ElasticNet(alpha=0.1, l1_ratio=0.5)
+        }
 
-            # ⏳ Cinematic Progress
-            status = st.empty()
-            progress = st.progress(0)
+        results = []
+        trained_models = {}
 
-            steps = [
-                "🔧 Applying Adstock...",
-                "📉 Applying Saturation...",
-                "🧠 Training Model...",
-                "📊 Calculating Contributions..."
-            ]
+        for name, m in models.items():
+            m.fit(X_train, y_train)
 
-            for i, step in enumerate(steps):
-                status.markdown(f"<div class='card'>{step}</div>", unsafe_allow_html=True)
-                time.sleep(0.8)
-                progress.progress((i+1)/len(steps))
+            train_r2 = m.score(X_train, y_train)
+            test_r2 = m.score(X_test, y_test)
 
-            # =========================
-            # MODEL
-            # =========================
-            transformed_cols = []
+            preds = m.predict(X_test)
+            mape = mean_absolute_percentage_error(y_test, preds)
 
-            for col in spend_cols:
-                p = params[col]
-                ad = adstock_transform(df[col].values, p["decay"])
-                fr = hill_saturation(ad, p["alpha"], p["gamma"])
-                new_col = col+"_t"
-                df[new_col] = fr
-                transformed_cols.append(new_col)
+            results.append({
+                "Model": name,
+                "Train R²": round(train_r2, 3),
+                "Test R²": round(test_r2, 3),
+                "MAPE": round(mape, 3)
+            })
 
-            df["trend"] = np.arange(len(df))
-            df["sin"] = np.sin(2*np.pi*df.index/12)
-            df["cos"] = np.cos(2*np.pi*df.index/12)
+            trained_models[name] = m
 
-            features = transformed_cols + ["trend","sin","cos"]
+        results_df = pd.DataFrame(results)
 
-            X = df[features]
-            y = df[sales_col]
+        st.subheader("🧠 Model Comparison")
+        st.dataframe(results_df, use_container_width=True)
 
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
+        best_model_name = results_df.sort_values("MAPE").iloc[0]["Model"]
+        model = trained_models[best_model_name]
 
-            X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+        st.success(f"✅ Best Model Selected: {best_model_name}")
 
-            model = Ridge(alpha=ridge_alpha)
-            model.fit(X_train, y_train)
+        train_r2 = results_df.loc[results_df["Model"] == best_model_name, "Train R²"].values[0]
+        test_r2 = results_df.loc[results_df["Model"] == best_model_name, "Test R²"].values[0]
 
-            train_r2 = model.score(X_train, y_train)
-            test_r2 = model.score(X_test, y_test)
+        # =========================
+        # CONTRIBUTION
+        # =========================
+        coeffs = model.coef_
+        contrib = pd.DataFrame(X_scaled * coeffs, columns=features)
+        total_contrib = contrib.sum()
 
-            coeffs = model.coef_
-            contrib = pd.DataFrame(X_scaled * coeffs, columns=features)
-            total_contrib = contrib.sum()
+        media_contrib = total_contrib[transformed_cols]
+        media_pct = (media_contrib / media_contrib.sum()) * 100
 
-            media_contrib = total_contrib[transformed_cols]
-            media_pct = (media_contrib / media_contrib.sum()) * 100
+        baseline = model.intercept_ + total_contrib["trend"] + total_contrib["sin"] + total_contrib["cos"]
 
-            baseline = model.intercept_ + total_contrib["trend"] + total_contrib["sin"] + total_contrib["cos"]
+        total_sales = y.sum()
+        baseline_pct = baseline / total_sales * 100
+        promo_pct = 100 - baseline_pct
 
-            total_sales = y.sum()
-            baseline_pct = baseline / total_sales * 100
-            promo_pct = 100 - baseline_pct
+        # ROI
+        spend_totals = df[spend_cols].sum()
+        roi = {}
+        for i, col in enumerate(spend_cols):
+            roi[col] = media_contrib.iloc[i] / spend_totals[col]
+        roi_df = pd.Series(roi)
 
-            # ROI
-            spend_totals = df[spend_cols].sum()
-            roi = {}
-            for i, col in enumerate(spend_cols):
-                roi[col] = media_contrib.iloc[i] / spend_totals[col]
-            roi_df = pd.Series(roi)
+        # =========================
+        # DASHBOARD OUTPUT
+        # =========================
+        st.success("✅ MMM Analysis Ready")
 
-            # =========================
-            # DASHBOARD
-            # =========================
-            st.success("✅ MMM Analysis Ready")
+        col1, col2, col3, col4 = st.columns(4)
+        metrics = [
+            ("Train R²", round(train_r2,3)),
+            ("Test R²", round(test_r2,3)),
+            ("Baseline %", f"{baseline_pct:.1f}%"),
+            ("Promo %", f"{promo_pct:.1f}%")
+        ]
 
-            col1, col2, col3, col4 = st.columns(4)
-            metrics = [
-                ("Train R²", round(train_r2,3)),
-                ("Test R²", round(test_r2,3)),
-                ("Baseline %", f"{baseline_pct:.1f}%"),
-                ("Promo %", f"{promo_pct:.1f}%")
-            ]
-            for col, (label, value) in zip([col1, col2, col3, col4], metrics):
-                with col:
-                    st.markdown(f"""
-                    <div class='metric-card'>
-                    <h3>{label}</h3>
-                    <h2>{value}</h2>
-                    </div>
-                    """, unsafe_allow_html=True)
+        for col, (label, value) in zip([col1, col2, col3, col4], metrics):
+            with col:
+                st.markdown(f"""
+                <div class='metric-card'>
+                <h3>{label}</h3>
+                <h2>{value}</h2>
+                </div>
+                """, unsafe_allow_html=True)
 
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("<div class='card'>", unsafe_allow_html=True)
-                st.subheader("📊 Contribution")
-                st.bar_chart(media_pct)
-                st.markdown("</div>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.subheader("📊 Contribution")
+            st.bar_chart(media_pct)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-            with c2:
-                st.markdown("<div class='card'>", unsafe_allow_html=True)
-                st.subheader("📈 ROI")
-                st.bar_chart(roi_df)
-                st.markdown("</div>", unsafe_allow_html=True)
+        with c2:
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.subheader("📈 ROI")
+            st.bar_chart(roi_df)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-            # =========================
-            # RESPONSE CURVES
-            # =========================
-            st.subheader("📈 Response Curves")
-            cols = st.columns(2)  # show 2 per row
+        # =========================
+        # STORE RESULTS
+        # =========================
+        st.session_state.model_results = {
+            "model": model,
+            "scaler": scaler,
+            "features": features,
+            "params": params,
+            "spend_cols": spend_cols,
+            "roi_df": roi_df,
+            "media_pct": media_pct
+        }
 
-            for i, col in enumerate(spend_cols):
-                p = params[col]
-                x = np.linspace(0, df[col].max()*1.5, 50)
-                y_curve = hill_saturation(adstock_transform(x, p["decay"]), p["alpha"], p["gamma"])
-                curve = pd.DataFrame({"Spend": x, "Response": y_curve})
-                with cols[i % 2]:
-                    st.markdown(f"**{col}**")
-                    st.line_chart(curve.set_index("Spend"), height=250)
-            st.session_state.model_results = {
-                "model": model,
-                "scaler": scaler,
-                "features": features,
-                "params": params,
-                "spend_cols": spend_cols,
-                "roi_df": roi_df,
-                "media_pct": media_pct
-            }
-
-
-            # =========================
-            # DOWNLOAD
-            # =========================
-            if st.session_state.model_results is not None:
-                media_pct = st.session_state.model_results["media_pct"]
-                st.download_button(
-                    "📥 Download Results",
-                    data=media_pct.to_csv(),
-                    file_name="mmm_results.csv"
-                )
-
+        # =========================
+        # DOWNLOAD
+        # =========================
+        st.download_button(
+            "📥 Download Results",
+            data=media_pct.to_csv(),
+            file_name="mmm_results.csv"
+        )
 # =========================
 # SIMULATOR (IMPROVED)
 # =========================        

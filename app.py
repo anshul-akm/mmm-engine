@@ -561,26 +561,81 @@ if page == "📊 Dashboard":
         st.bar_chart(res_df)
 
         # =========================
-        # CONTRIBUTION
+        # ELITE MMM CONTRIBUTION + ROI (INCREMENTAL)
         # =========================
-        coeffs = model.coef_
-        contrib = pd.DataFrame(X_scaled * coeffs, columns=features)
-        total_contrib = contrib.sum()
-
-        media_contrib = total_contrib[transformed_cols]
-        media_pct = (media_contrib / media_contrib.sum()) * 100
-
-        baseline = model.intercept_ + total_contrib["trend"] + total_contrib["sin"] + total_contrib["cos"]
-
-        total_sales = y.sum()
-        baseline_pct = baseline / total_sales * 100
-        promo_pct = 100 - baseline_pct
-
-        # ROI
-        spend_totals = df[spend_cols].sum()
-        roi = {}
+        
+        # Full feature set
+        X_full = df[features].copy()
+        
+        # Predict total sales with all channels
+        X_full_scaled = scaler.transform(X_full)
+        full_pred = model.predict(X_full_scaled).sum()
+        
+        channel_contrib = {}
+        
+        # =========================
+        # CHANNEL CONTRIBUTION (REMOVE ONE CHANNEL AT A TIME)
+        # =========================
         for i, col in enumerate(spend_cols):
-            roi[col] = media_contrib.iloc[i] / spend_totals[col]
+        
+            temp_df = X_full.copy()
+        
+            # Zero out only this channel
+            transformed_col = transformed_cols[i]
+            temp_df[transformed_col] = 0
+        
+            temp_scaled = scaler.transform(temp_df)
+            temp_pred = model.predict(temp_scaled).sum()
+        
+            contribution = full_pred - temp_pred
+        
+            # Avoid negative noise
+            channel_contrib[col] = max(contribution, 0)
+        
+        media_contrib = pd.Series(channel_contrib)
+        
+        # =========================
+        # % CONTRIBUTION
+        # =========================
+        if media_contrib.sum() != 0:
+            media_pct = (media_contrib / media_contrib.sum()) * 100
+        else:
+            media_pct = media_contrib.copy()
+        
+        # =========================
+        # BASELINE (NO MEDIA)
+        # =========================
+        X_zero = X_full.copy()
+        X_zero[transformed_cols] = 0
+        
+        X_zero_scaled = scaler.transform(X_zero)
+        baseline_pred = model.predict(X_zero_scaled).sum()
+        
+        total_sales = full_pred
+        
+        if total_sales != 0:
+            baseline_pct = (baseline_pred / total_sales) * 100
+        else:
+            baseline_pct = 0
+        
+        promo_pct = 100 - baseline_pct
+        
+        # =========================
+        # ROI (TRUE INCREMENTAL)
+        # =========================
+        spend_totals = df[spend_cols].sum()
+        
+        roi = {}
+        
+        for col in spend_cols:
+            spend_value = spend_totals[col]
+            contrib_value = media_contrib[col]
+        
+            if spend_value > 0:
+                roi[col] = contrib_value / spend_value
+            else:
+                roi[col] = 0
+        
         roi_df = pd.Series(roi)
 
         # =========================

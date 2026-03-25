@@ -8,9 +8,113 @@ import statsmodels.api as sm
 import time
 
 # =========================
-# PAGE CONFIG
+# PAGE CONFIG (UPGRADED)
 # =========================
-st.set_page_config(page_title="Anshul MMM Intelligence", layout="wide")
+st.set_page_config(
+    page_title="MMM Intelligence",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# =========================
+# PREMIUM CSS
+# =========================
+st.markdown("""
+<style>
+
+/* Global */
+body {
+    background-color: #0E1117;
+    color: #E6EDF3;
+}
+
+/* Layout spacing */
+.block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #111827;
+    border-right: 1px solid #222;
+}
+
+/* Cards */
+.card {
+    background-color: #161B22;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #222;
+    margin-bottom: 15px;
+}
+
+/* KPI Cards */
+.metric-card {
+    background-color: #161B22;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #222;
+    text-align: center;
+}
+
+/* Typography */
+h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: #E6EDF3;
+}
+
+h2 {
+    font-size: 22px;
+    color: #9CA3AF;
+}
+
+h3 {
+    font-size: 18px;
+    color: #9CA3AF;
+}
+
+/* Buttons */
+button[kind="primary"] {
+    background-color: #4CAF50 !important;
+    border-radius: 8px;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab"] {
+    font-size: 16px;
+    padding: 10px;
+}
+
+/* Tables */
+[data-testid="stDataFrame"] {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Hide Streamlit branding */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+
+</style>
+""", unsafe_allow_html=True)
+
+# =========================
+# HEADER (PROFESSIONAL)
+# =========================
+col1, col2 = st.columns([1, 6])
+
+with col1:
+    st.image("logo.png", width=80)
+
+with col2:
+    st.markdown("<h1>MMM Intelligence</h1>", unsafe_allow_html=True)
+    st.markdown("<h3>Marketing Mix Modeling & Optimization Suite</h3>", unsafe_allow_html=True)
+
+st.markdown("---")
+st.caption("Trusted by Data-Driven Marketing Teams")
 
 # =========================
 # PASSWORD
@@ -19,32 +123,6 @@ password = st.text_input("🔒 Enter Password", type="password")
 if password != "anshul123":
     st.stop()
 
-# =========================
-# CSS (AESTHETIC UI)
-# =========================
-st.markdown("""
-<style>
-.block-container {padding-top: 1rem;}
-h1, h2, h3 {text-align:center; color:#00FFAA;}
-.card {
-    padding:20px;
-    border-radius:12px;
-    background-color:#111;
-    box-shadow:0px 0px 10px rgba(0,255,170,0.2);
-    margin-bottom:15px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =========================
-# HEADER
-# =========================
-st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-st.image("logo.png", width=1500)
-st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("<h1>Welcome to MMM Engine 🚀</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align:center;color:gray;'>AI-powered Marketing Mix Modeling by Anshul</h4>", unsafe_allow_html=True)
 
 # =========================
 # TABS

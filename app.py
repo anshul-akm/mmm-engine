@@ -346,7 +346,6 @@ Built with ❤️ by Anshul
 """)
 
 # =========================
-# =========================
 # MAIN DASHBOARD
 # =========================
 if page == "📊 Dashboard":
@@ -489,6 +488,46 @@ if page == "📊 Dashboard":
 
         train_r2 = results_df.loc[results_df["Model"] == best_model_name, "Train R²"].values[0]
         test_r2 = results_df.loc[results_df["Model"] == best_model_name, "Test R²"].values[0]
+        # =========================
+        # VALIDATION METRICS (NEW)
+        # =========================
+        from sklearn.metrics import mean_squared_error
+        
+        preds = model.predict(X_test)
+        
+        rmse = np.sqrt(mean_squared_error(y_test, preds))
+        mape = mean_absolute_percentage_error(y_test, preds)
+        
+        st.subheader("📉 Model Validation")
+        
+        col1, col2 = st.columns(2)
+        col1.metric("RMSE", round(rmse,2))
+        col2.metric("MAPE", round(mape,3))
+        
+        st.caption("Model validated using hold-out test data")
+        
+        # =========================
+        # ACTUAL vs PREDICTED
+        # =========================
+        val_df = pd.DataFrame({
+            "Actual": y_test.values,
+            "Predicted": preds
+        })
+        
+        st.markdown("### 📊 Actual vs Predicted")
+        st.line_chart(val_df.reset_index(drop=True))
+        
+        # =========================
+        # RESIDUAL ANALYSIS
+        # =========================
+        residuals = y_test.values - preds
+        
+        res_df = pd.DataFrame({
+            "Residuals": residuals
+        })
+        
+        st.markdown("### 📉 Residual Distribution")
+        st.bar_chart(res_df)
 
         # =========================
         # CONTRIBUTION

@@ -441,11 +441,21 @@ with tab1:
             # =========================
             st.success("✅ MMM Analysis Ready")
 
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Train R²", round(train_r2,3))
-            m2.metric("Test R²", round(test_r2,3))
-            m3.metric("Baseline %", f"{baseline_pct:.1f}%")
-            m4.metric("Promo %", f"{promo_pct:.1f}%")
+            col1, col2, col3, col4 = st.columns(4)
+            metrics = [
+                ("Train R²", round(train_r2,3)),
+                ("Test R²", round(test_r2,3)),
+                ("Baseline %", f"{baseline_pct:.1f}%"),
+                ("Promo %", f"{promo_pct:.1f}%")
+            ]
+            for col, (label, value) in zip([col1, col2, col3, col4], metrics):
+                with col:
+                    st.markdown(f"""
+                    <div class='metric-card'>
+                    <h3>{label}</h3>
+                    <h2>{value}</h2>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             c1, c2 = st.columns(2)
             with c1:

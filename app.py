@@ -531,10 +531,8 @@ if page == "📊 Dashboard":
                     file_name="mmm_results.csv"
                 )
 
-
-
 # =========================
-# OPTIMIzer
+# SIMULATOR (IMPROVED)
 # =========================        
 if page == "🎯 Simulator":
 
@@ -553,6 +551,9 @@ if page == "🎯 Simulator":
 
     st.header("🎯 Scenario Simulator")
 
+    # =========================
+    # USER INPUT
+    # =========================
     scenario = {}
     for col in spend_cols:
         change = st.slider(f"{col} Spend Change (%)", -50, 100, 0)
@@ -560,6 +561,9 @@ if page == "🎯 Simulator":
 
     scenario_df = pd.DataFrame([scenario])
 
+    # =========================
+    # TRANSFORM SCENARIO
+    # =========================
     for col in spend_cols:
         p = params[col]
         ad = adstock_transform(scenario_df[col].values, p["decay"])
@@ -570,10 +574,34 @@ if page == "🎯 Simulator":
     )
 
     predicted = model.predict(scenario_X)[0]
-    st.metric("📊 Predicted Sales", round(predicted,2))
 
+    # =========================
+    # BASELINE CALCULATION (NEW)
+    # =========================
+    baseline_input = df[spend_cols].mean().to_frame().T
+
+    for col in spend_cols:
+        p = params[col]
+        ad = adstock_transform(baseline_input[col].values, p["decay"])
+        baseline_input[col] = hill_saturation(ad, p["alpha"], p["gamma"])
+
+    baseline_X = scaler.transform(
+        baseline_input.reindex(columns=features, fill_value=0)
+    )
+
+    baseline_pred = model.predict(baseline_X)[0]
+
+    # =========================
+    # OUTPUT (COMPARISON)
+    # =========================
+    delta = predicted - baseline_pred
+
+    col1, col2 = st.columns(2)
+    col1.metric("Baseline Sales", round(baseline_pred, 2))
+    col2.metric("New Sales", round(predicted, 2), delta=round(delta, 2))
 # =========================
-# OPTIMIzer
+# =========================
+# OPTIMIZER (IMPROVED)
 # =========================
 if page == "💰 Optimizer":
 
@@ -582,28 +610,54 @@ if page == "💰 Optimizer":
         st.stop()
 
     data = st.session_state.model_results
+    df = st.session_state.df
 
-    roi_df = data["roi_df"]
+    model = data["model"]
+    scaler = data["scaler"]
+    features = data["features"]
+    params = data["params"]
     spend_cols = data["spend_cols"]
 
     st.header("💰 Budget Optimizer")
 
     total_budget = st.number_input("Total Budget", value=1000000)
 
-    roi_clean = roi_df.replace([np.inf, -np.inf], np.nan).fillna(0)
-    weights = roi_clean.clip(lower=0)
+    # =========================
+    # BASELINE SPEND DISTRIBUTION
+    # =========================
+    base_spend = df[spend_cols].mean()
 
-    if weights.sum() == 0:
-        weights = pd.Series([1/len(spend_cols)]*len(spend_cols), index=spend_cols)
-    else:
-        weights = weights / weights.sum()
-
+    # =========================
+    # INITIAL ALLOCATION (START POINT)
+    # =========================
+    weights = base_spend / base_spend.sum()
     alloc = weights * total_budget
 
+    # =========================
+    # TRANSFORM ALLOCATION THROUGH MODEL
+    # =========================
+    alloc_df = pd.DataFrame([alloc])
+
+    for col in spend_cols:
+        p = params[col]
+        ad = adstock_transform(alloc_df[col].values, p["decay"])
+        alloc_df[col] = hill_saturation(ad, p["alpha"], p["gamma"])
+
+    alloc_X = scaler.transform(
+        alloc_df.reindex(columns=features, fill_value=0)
+    )
+
+    predicted_sales = model.predict(alloc_X)[0]
+
+    # =========================
+    # OUTPUT
+    # =========================
     opt_df = pd.DataFrame({
         "Channel": spend_cols,
         "Budget": alloc.values
     })
+
+    st.metric("📊 Expected Sales from Allocation", round(predicted_sales, 2))
 
     st.dataframe(opt_df, use_container_width=True)
     st.bar_chart(opt_df.set_index("Channel"))

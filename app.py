@@ -8,7 +8,7 @@ import statsmodels.api as sm
 import time
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-def generate_pdf_report(media_pct, roi_df, insights, filename="mmm_report.pdf"):
+def generate_pdf_report(media_pct, roi_df, insights, filename="Anshulytics_AI_mmm_report.pdf"):
 
     from reportlab.platypus import (
         SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
@@ -31,7 +31,7 @@ def generate_pdf_report(media_pct, roi_df, insights, filename="mmm_report.pdf"):
         pass
 
     content.append(Spacer(1, 10))
-    content.append(Paragraph("<b>MMM Intelligence Report</b>", styles["Title"]))
+    content.append(Paragraph("<b>Anshulytics AI Report</b>", styles["Title"]))
     content.append(Paragraph("Marketing Mix Modeling & Optimization Suite", styles["Normal"]))
     content.append(Spacer(1, 20))
 
@@ -123,7 +123,7 @@ if "model_results" not in st.session_state:
 # PAGE CONFIG (UPGRADED)
 # =========================
 st.set_page_config(
-    page_title="MMM Intelligence",
+    page_title="Anshulytics AI",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -252,7 +252,7 @@ def login_screen():
     except:
         pass
 
-    st.markdown('<div class="login-title">MMM Intelligence</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">Anshulytics AI</div>', unsafe_allow_html=True)
     st.markdown('<div class="login-sub">Login to continue</div>', unsafe_allow_html=True)
 
     # ✅ NEW: Email + Password
@@ -292,7 +292,7 @@ with col1:
         pass
 
 with col2:
-    st.markdown("<h1>MMM Intelligence</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>Anshulytics AI</h1>", unsafe_allow_html=True)
     st.markdown("<h3>Marketing Mix Modeling & Optimization Suite</h3>", unsafe_allow_html=True)
 
 st.markdown("---")
@@ -309,9 +309,9 @@ page = st.sidebar.radio(
     "Navigation",
     [
         "📈 EDA",
-        "📊 Dashboard",
-        "🎯 Simulator",
-        "💰 Optimizer",
+        "📊 MMM Engine",
+        "🎯 Scenario Simulator",
+        "💰 Budget Optimizer",
         "📘 Help"
     ]
 )
@@ -516,7 +516,7 @@ Built with ❤️ by Anshul
 # =========================
 # MAIN DASHBOARD
 # =========================
-if page == "📊 Dashboard":
+if page == "📊 MMM Engine":
 
     df = st.session_state.df
 
@@ -906,7 +906,7 @@ if page == "📊 Dashboard":
 # =========================
 # SIMULATOR (IMPROVED)
 # =========================        
-if page == "🎯 Simulator":
+if page == "🎯 Scenario Simulator":
 
     if st.session_state.model_results is None:
         st.warning("Run model first from Dashboard")
@@ -974,7 +974,7 @@ if page == "🎯 Simulator":
 # =========================
 # OPTIMIZER (REAL)
 # =========================
-if page == "💰 Optimizer":
+if page == "💰 Budget Optimizer":
 
     if st.session_state.model_results is None:
         st.warning("Run model first from Dashboard")

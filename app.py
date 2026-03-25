@@ -215,8 +215,10 @@ footer {visibility: hidden;}
 
 # =========================
 # =========================
-# LOGIN SCREEN (CLEAN)
+# LOGIN SCREEN (EMAIL BASED)
 # =========================
+
+USERS = st.secrets["users"]
 
 def login_screen():
     st.markdown("""
@@ -228,7 +230,7 @@ def login_screen():
             border: 1px solid #222;
             width: 400px;
             margin: auto;
-            margin-top: 100px;
+            margin-top: 10vh;
             text-align: center;
         }
         .login-title {
@@ -251,16 +253,19 @@ def login_screen():
         pass
 
     st.markdown('<div class="login-title">MMM Intelligence</div>', unsafe_allow_html=True)
-    st.markdown('<div class="login-sub">Marketing Mix Modeling Suite</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-sub">Login to continue</div>', unsafe_allow_html=True)
 
-    password = st.text_input("Enter Password", type="password")
+    # ✅ NEW: Email + Password
+    email = st.text_input("Email")
+    password = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        if password == "anshul123":
+        if email in USERS and USERS[email] == password:
             st.session_state["authenticated"] = True
+            st.session_state["user"] = email
             st.rerun()
         else:
-            st.error("Incorrect password")
+            st.error("Invalid email or password")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -275,8 +280,6 @@ if "authenticated" not in st.session_state:
 if not st.session_state["authenticated"]:
     login_screen()
     st.stop()
-
-
 # =========================
 # HEADER (SHOW ONLY AFTER LOGIN)
 # =========================

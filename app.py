@@ -287,7 +287,7 @@ col1, col2 = st.columns([1, 6])
 
 with col1:
     try:
-        st.image("logo2.png", width=120)
+        st.image("logo.png", width=120)
     except:
         pass
 

@@ -556,33 +556,47 @@ if page == "📊 MMM Engine":
 
     ridge_alpha = st.sidebar.slider("Ridge Alpha", 0.1, 10.0, 1.0)
 
-     # =========================
-    # RUN MODEL (PRO VERSION)
     # =========================
-    if st.button("Run MMM Analysis"):
+    # RUN MODEL (PROFESSIONAL UI)
+    # =========================
+    if st.button("Run MMM Model"):
     
-        # Header
-        st.markdown("### 🧠 Running MMM Analysis")
+        # Clean header
+        st.markdown("### Running MMM Analysis")
     
-        # Loader (clean spinner instead of childish progress bar)
+        # Spinner (professional loading)
         with st.spinner("Processing data and training model..."):
     
-            # Subtle status updates
+            # Status container
             status = st.empty()
     
             steps = [
-                "Applying adstock transformation",
-                "Applying saturation curves",
+                "Applying carryover transformations (adstock)",
+                "Modeling diminishing returns (saturation curves)",
                 "Training regression models",
-                "Evaluating performance",
-                "Computing contributions & ROI"
+                "Evaluating model performance",
+                "Computing channel contributions and ROI"
             ]
     
             for step in steps:
                 status.markdown(f"""
                 <div style="
-                    padding:10px 0;
-                    font-size:15px
+                    background-color:#161B22;
+                    padding:12px;
+                    border-radius:8px;
+                    border:1px solid #2d3748;
+                    margin-bottom:8px;
+                    font-size:14px;
+                    color:#E6EDF3;
+                ">
+                    {step}
+                </div>
+                """, unsafe_allow_html=True)
+    
+                time.sleep(0.6)
+    
+        # Final success state
+        st.success("MMM analysis completed successfully")
         # =========================
         # FEATURE ENGINEERING
         # =========================

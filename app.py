@@ -556,31 +556,33 @@ if page == "📊 MMM Engine":
 
     ridge_alpha = st.sidebar.slider("Ridge Alpha", 0.1, 10.0, 1.0)
 
-    # =========================
-    # RUN MODEL
-    # =========================
-    if st.button("🚀 Run MMM Model"):
-
-        st.markdown("### 🤖 MMM Engine Initializing...")
-        try:
-            st.video(open("robot.mp4", "rb").read())
-        except:
-            st.info("Add robot.mp4 for animation")
-
-        status = st.empty()
-        progress = st.progress(0)
-
-        steps = [
-            "🔧 Applying Adstock...",
-            "📉 Applying Saturation...",
-            "🧠 Training Model...",
-            "📊 Calculating Contributions..."
-        ]
-
-        for i, step in enumerate(steps):
-            status.markdown(f"<div class='card'>{step}</div>", unsafe_allow_html=True)
-            time.sleep(0.8)
-            progress.progress((i+1)/len(steps))
+        # =========================
+        # RUN MODEL (PRO VERSION)
+        # =========================
+        if st.button("Run MMM Analysis"):
+        
+            # Header
+            st.markdown("### 🧠 Running MMM Analysis")
+        
+            # Loader (clean spinner instead of childish progress bar)
+            with st.spinner("Processing data and training model..."):
+        
+                # Subtle status updates
+                status = st.empty()
+        
+                steps = [
+                    "Applying adstock transformation",
+                    "Applying saturation curves",
+                    "Training regression models",
+                    "Evaluating performance",
+                    "Computing contributions & ROI"
+                ]
+        
+                for step in steps:
+                    status.markdown(f"""
+                    <div style="
+                        padding:10px 0;
+                        font-size:15px
 
         # =========================
         # FEATURE ENGINEERING

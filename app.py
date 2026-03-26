@@ -25,7 +25,7 @@ def generate_pdf_report(media_pct, roi_df, insights, filename="Anshulytics_AI_mm
     # HEADER (LOGO + TITLE)
     # =========================
     try:
-        logo = Image("logo.png", width=1.2*inch, height=1.2*inch)
+        logo = Image("logo.png", width=2.2*inch, height=1.2*inch)
         content.append(logo)
     except:
         pass
@@ -248,7 +248,7 @@ def login_screen():
     st.markdown('<div class="login-box">', unsafe_allow_html=True)
 
     try:
-        st.image("logo.png", width=120)
+        st.image("logo.png", width=240)
     except:
         pass
 
@@ -287,7 +287,7 @@ col1, col2 = st.columns([1, 6])
 
 with col1:
     try:
-        st.image("logo.png", width=120)
+        st.image("logo.png", width=240)
     except:
         pass
 

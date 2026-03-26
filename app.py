@@ -134,6 +134,23 @@ st.set_page_config(
 # =========================
 st.markdown("""
 <style>
+.loader {
+  border: 4px solid #2d3748;
+  border-top: 4px solid #4CAF50;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  animation: spin 1s linear infinite;
+  margin: 10px auto;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+""", unsafe_allow_html=True)
+st.markdown("""
+<style>
 
 /* Global */
 body {
@@ -557,45 +574,48 @@ if page == "📊 MMM Engine":
     ridge_alpha = st.sidebar.slider("Ridge Alpha", 0.1, 10.0, 1.0)
 
     # =========================
-    # RUN MODEL (PROFESSIONAL UI)
+    # RUN MODEL (PREMIUM UI)
     # =========================
     if st.button("Run MMM Model"):
     
-        # Clean header
         st.markdown("### Running MMM Analysis")
     
-        # Spinner (professional loading)
-        with st.spinner("Processing data and training model..."):
+        # Loader
+        loader_placeholder = st.empty()
+        loader_placeholder.markdown('<div class="loader"></div>', unsafe_allow_html=True)
     
-            # Status container
-            status = st.empty()
+        # Status container
+        status = st.empty()
     
-            steps = [
-                "Applying carryover transformations (adstock)",
-                "Modeling diminishing returns (saturation curves)",
-                "Training regression models",
-                "Evaluating model performance",
-                "Computing channel contributions and ROI"
-            ]
+        steps = [
+            "Applying carryover transformations (adstock)",
+            "Modeling diminishing returns (saturation curves)",
+            "Training regression models",
+            "Evaluating model performance",
+            "Computing channel contributions and ROI"
+        ]
     
-            for step in steps:
-                status.markdown(f"""
-                <div style="
-                    background-color:#161B22;
-                    padding:12px;
-                    border-radius:8px;
-                    border:1px solid #2d3748;
-                    margin-bottom:8px;
-                    font-size:14px;
-                    color:#E6EDF3;
-                ">
-                    {step}
-                </div>
-                """, unsafe_allow_html=True)
+        for step in steps:
+            status.markdown(f"""
+            <div style="
+                background-color:#161B22;
+                padding:12px;
+                border-radius:8px;
+                border:1px solid #2d3748;
+                margin-bottom:8px;
+                font-size:14px;
+                color:#E6EDF3;
+            ">
+                {step}
+            </div>
+            """, unsafe_allow_html=True)
     
-                time.sleep(0.6)
+            time.sleep(0.6)
     
-        # Final success state
+        # Remove loader
+        loader_placeholder.empty()
+    
+        # Success
         st.success("MMM analysis completed successfully")
         # =========================
         # FEATURE ENGINEERING

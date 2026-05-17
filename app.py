@@ -277,14 +277,26 @@ def login_screen():
     password = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        if email in USERS and USERS[email] == password:
-            st.session_state["authenticated"] = True
-            st.session_state["user"] = email
-            st.rerun()
-        else:
-            st.error("Invalid email or password")
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Correct login
+    if email in USERS and USERS[email] == password:
+        st.session_state["authenticated"] = True
+        st.session_state["user"] = email
+        st.rerun()
+
+    # Correct email but wrong password
+    elif email in USERS:
+        st.error("Incorrect password")
+
+        # SHOW FORGOT PASSWORD BUTTON
+        if st.button("Forgot Password?"):
+            st.warning(
+                "Please contact anshulmishra1600@gmail.com for password reset."
+            )
+
+    # Wrong email
+    else:
+        st.error("Email not found")
 
 
 # =========================

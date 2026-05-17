@@ -276,8 +276,13 @@ def login_screen():
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
 
+    # Track forgot password visibility
+    if "show_forgot" not in st.session_state:
+        st.session_state.show_forgot = False
+    
+    # LOGIN BUTTON
     if st.button("Login"):
-
+    
         # Correct login
         if email in USERS and USERS[email] == password:
             st.session_state["authenticated"] = True
@@ -286,17 +291,21 @@ def login_screen():
     
         # Correct email but wrong password
         elif email in USERS:
+            st.session_state.show_forgot = True
             st.error("Incorrect password")
-    
-            # SHOW FORGOT PASSWORD BUTTON
-            if st.button("Forgot Password?"):
-                st.warning(
-                    "Please contact anshulmishra1600@gmail.com for password reset."
-                )
     
         # Wrong email
         else:
+            st.session_state.show_forgot = False
             st.error("Email not found")
+    
+    # SHOW FORGOT PASSWORD BUTTON
+    if st.session_state.show_forgot:
+    
+        if st.button("Forgot Password?"):
+            st.warning(
+                "Please contact anshulmishra1600@gmail.com for password reset."
+            )
 
 
 # =========================
